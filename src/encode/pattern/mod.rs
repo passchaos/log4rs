@@ -59,6 +59,7 @@
 //! * `m`, `message` - The log message.
 //! * `M`, `module` - The module that the log message came from, or `???` if not
 //!     provided.
+//! * `P`, `pid` - The current process id.
 //! * `n` - A platform-specific newline.
 //! * `t`, `target` - The target of the log message.
 //! * `T`, `thread` - The name of the current thread.
@@ -125,6 +126,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::thread;
+use std::process;
 use thread_id;
 
 use encode::pattern::parser::{Alignment, Parameters, Parser, Piece};
@@ -448,6 +450,7 @@ impl<'a> From<Piece<'a>> for Chunk {
                 "L" | "line" => no_args(&formatter.args, parameters, FormattedChunk::Line),
                 "T" | "thread" => no_args(&formatter.args, parameters, FormattedChunk::Thread),
                 "I" | "thread_id" => no_args(&formatter.args, parameters, FormattedChunk::ThreadId),
+                "P" | "pid" => no_args(&formatter.args, parameters, FormattedChunk::ProcessId),
                 "t" | "target" => no_args(&formatter.args, parameters, FormattedChunk::Target),
                 "X" | "mdc" => {
                     if formatter.args.len() > 2 {
@@ -536,6 +539,7 @@ enum FormattedChunk {
     Line,
     Thread,
     ThreadId,
+    ProcessId,
     Target,
     Newline,
     Align(Vec<Chunk>),
@@ -563,7 +567,10 @@ impl FormattedChunk {
             }
             FormattedChunk::ThreadId => {
                 w.write_all(thread_id::get().to_string().as_bytes())
-            }
+            },
+            FormattedChunk::ProcessId => {
+                w.write_all(process::id().to_string().as_bytes())
+            },
             FormattedChunk::Target => w.write_all(record.target().as_bytes()),
             FormattedChunk::Newline => w.write_all(NEWLINE.as_bytes()),
             FormattedChunk::Align(ref chunks) => {
@@ -686,6 +693,8 @@ mod tests {
     use log_mdc;
     #[cfg(feature = "simple_writer")]
     use thread_id;
+    #[cfg(feature = "simple_writer")]
+    use std::process;
 
     use super::{Chunk, PatternEncoder};
     #[cfg(feature = "simple_writer")]
@@ -771,6 +780,17 @@ mod tests {
             })
             .join()
             .unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "simple_writer")]
+    fn process_id() {
+        let pw = PatternEncoder::new("{P}");
+        let mut buf = vec![];
+
+        pw.encode(&mut SimpleWriter(&mut buf), &Record::builder().build()).unwrap();
+
+        assert_eq!(buf, process::id().to_string().as_bytes());
     }
 
     #[test]
