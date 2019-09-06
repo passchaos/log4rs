@@ -442,6 +442,7 @@ impl<'a> From<Piece<'a>> for Chunk {
                         params: parameters,
                     }
                 }
+                "e" | "emoji" => no_args(&formatter.args, parameters, FormattedChunk::Emoji),
                 "l" | "level" => no_args(&formatter.args, parameters, FormattedChunk::Level),
                 "m" | "message" => no_args(&formatter.args, parameters, FormattedChunk::Message),
                 "M" | "module" => no_args(&formatter.args, parameters, FormattedChunk::Module),
@@ -533,6 +534,7 @@ enum Timezone {
 enum FormattedChunk {
     Time(String, Timezone),
     Level,
+    Emoji,
     Message,
     Module,
     File,
@@ -549,12 +551,15 @@ enum FormattedChunk {
 
 impl FormattedChunk {
     fn encode(&self, w: &mut encode::Write, record: &Record) -> io::Result<()> {
+        const LOG_LEVEL_EMOJIES: [&'static str; 6] = ["", "❤️", "💛", "💙", "💚", "💜"];
+
         match *self {
             FormattedChunk::Time(ref fmt, Timezone::Utc) => write!(w, "{}", Utc::now().format(fmt)),
             FormattedChunk::Time(ref fmt, Timezone::Local) => {
                 write!(w, "{}", Local::now().format(fmt))
             }
             FormattedChunk::Level => write!(w, "{}", record.level()),
+            FormattedChunk::Emoji => write!(w, "{}", LOG_LEVEL_EMOJIES.get(record.level() as usize).unwrap_or(&"❓")),
             FormattedChunk::Message => w.write_fmt(*record.args()),
             FormattedChunk::Module => w.write_all(record.module_path().unwrap_or("???").as_bytes()),
             FormattedChunk::File => w.write_all(record.file().unwrap_or("???").as_bytes()),
