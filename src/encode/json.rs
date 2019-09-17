@@ -70,7 +70,7 @@ impl JsonEncoder {
         let thread = thread::current();
         let message = Message {
             time: time.format_with_items(Some(Item::Fixed(Fixed::RFC3339)).into_iter()),
-            id: record.id(),
+            log_id: record.id(),
             message: record.args(),
             level: record.level(),
             module_path: record.module_path(),
@@ -96,7 +96,7 @@ impl Encode for JsonEncoder {
 #[derive(Serialize)]
 struct Message<'a> {
     #[serde(serialize_with = "ser_display")] time: DelayedFormat<option::IntoIter<Item<'a>>>,
-    #[serde(skip_serializing_if = "Option::is_none")] id: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")] log_id: Option<&'a str>,
     #[serde(serialize_with = "ser_display")] message: &'a fmt::Arguments<'a>,
     #[serde(skip_serializing_if = "Option::is_none")] module_path: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")] file: Option<&'a str>,
